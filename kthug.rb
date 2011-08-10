@@ -38,7 +38,7 @@ class Kthug
   def save_item(item)
     url = item_url item
 
-    if @times.rank(url)
+    unless @times.rank(url)
       page = Nokogiri::HTML(download(url)) {|c| c.default_xml.noblanks }
 
       @times[url] = item_time item
@@ -65,6 +65,7 @@ class Kthug
     if test? and File.exists?(file) and File.size(file) > 0
       content = open(file).read
     else
+      puts "downloading #{url}"
       content = open(url).read
       File.open(file, 'wb') {|f| f.write(content) }
     end
@@ -77,7 +78,7 @@ class Kthug
   end
 
   def update_rss
-    File.open('/tmp/kthug.atom', 'w') {|f| f.write(atom_feed) }
+    File.open('/opt/nginx/html/kthug.atom', 'w') {|f| f.write(atom_feed) }
   end
 
   def atom_feed
@@ -124,8 +125,9 @@ else
 
   Daemons.run_proc('kthug', log_output: true) do
     loop do
+      puts "updating ..."
       kthug.update
-      sleep 5.seconds
+      sleep 5.minutes
     end
   end
 end
