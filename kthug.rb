@@ -32,13 +32,14 @@ class Kthug
   end
 
   def feed
+    puts "downloading feed" if test?
     Nokogiri::XML(open('http://krugman.blogs.nytimes.com/feed/')) {|c| c.default_xml.noblanks }
   end
 
   def save_item(item)
     url = item_url item
 
-    unless @times.rank(url)
+    if @times.score(url) == 0.0
       page = Nokogiri::HTML(download(url)) {|c| c.default_xml.noblanks }
 
       @times[url] = item_time item
@@ -78,7 +79,9 @@ class Kthug
   end
 
   def update_rss
-    File.open('/opt/nginx/html/kthug.atom', 'w') {|f| f.write(atom_feed) }
+    filename = '/opt/nginx/html/kthug.atom'
+    puts "saving #{filename}"
+    File.open(filename, 'w') {|f| f.write(atom_feed) }
   end
 
   def atom_feed
@@ -95,11 +98,13 @@ class Kthug
     builder = Nokogiri::XML::Builder.new do |xml|
       xml.feed(xmlns: "http://www.w3.org/2005/Atom") {
         xml.title "Kthug"
+        xml.updated(Time.at(@times.score(@times.first)).xmlschema)
         @times.revrange(0, 19).each { |url|
           post = @posts[url]
           xml.entry {
             xml.title post[:title]
             xml.link(href: url)
+            xml.updated(Time.at(@times[url]).xmlschema)
             xml.content(type: 'xhtml') {
               xml.p { xml.i post[:subhead] }
               xml << post[:content]
